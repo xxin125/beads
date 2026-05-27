@@ -1,0 +1,39 @@
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Packaging outputs
+build/
+dist/
+*.egg-info/
+wheelhouse/
+
+# CMake and native build outputs
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+_skbuild/
+compile_commands.json
+*.so
+*.dylib
+*.dll
+*.pyd
+*.a
+*.o
+
+# Local run outputs from examples and experiments
+*.log
+*.thermo.csv
+*.trajectory.beadsbin
+*.state.beadsbin
+*.lammpstrj
+
+# Local editor and OS files
+.vscode/
+.idea/
+.DS_Store
