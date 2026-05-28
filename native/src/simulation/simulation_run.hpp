@@ -14,6 +14,7 @@
 #include <optional>
 #include <stdexcept>
 #include <chrono>
+#include <functional>
 
 namespace beads {
 namespace simulation {
@@ -25,9 +26,13 @@ class NotImplementedFeature : public std::runtime_error {
 
 class SimulationRun {
  public:
+  using InterruptCheckCallback = std::function<void()>;
+
   // Direct C++ specs are trusted internal inputs. User-facing paths must cross
   // the Python/native-dict validation boundary before constructing this type.
-  explicit SimulationRun(const input::SimulationSpec& spec);
+  explicit SimulationRun(
+      const input::SimulationSpec& spec,
+      InterruptCheckCallback interrupt_check = {});
 
   void execute();
 
@@ -47,6 +52,8 @@ class SimulationRun {
   void advance_dynamics_step(
       const dynamics::DynamicsProgram& dynamics,
       runstep_t physical_step);
+  void check_interrupt();
+  void synchronize_streams_noexcept() noexcept;
 
   system::state::HostState host_state_;
   forcefield::ForceFieldModel force_field_;
@@ -60,6 +67,8 @@ class SimulationRun {
   output::log::LogRunStartSummary log_start_summary_;
   std::chrono::steady_clock::time_point run_start_time_;
   runstep_t runsteps_ = 0;
+  InterruptCheckCallback interrupt_check_;
+  runstep_t interrupt_check_interval_ = 100;
 };
 
 }  // namespace simulation

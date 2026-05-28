@@ -356,20 +356,6 @@ inline double require_real_parameter(
   throw std::invalid_argument(std::string(path) + "." + key + " must be a real value.");
 }
 
-inline std::int64_t require_integer_parameter(
-    const StyleParamMap& params,
-    const char* key,
-    const char* path) {
-  const auto iter = params.find(key);
-  if (iter == params.end()) {
-    throw std::invalid_argument(std::string(path) + "." + key + " is required.");
-  }
-  if (std::holds_alternative<std::int64_t>(iter->second)) {
-    return std::get<std::int64_t>(iter->second);
-  }
-  throw std::invalid_argument(std::string(path) + "." + key + " must be an integer.");
-}
-
 inline void require_exact_parameter_keys(
     const StyleParamMap& params,
     const std::vector<const char*>& keys,
@@ -386,80 +372,6 @@ inline void require_exact_parameter_keys(
       throw std::invalid_argument(
           std::string(path) + " has unsupported parameter \"" + key + "\".");
     }
-  }
-}
-
-inline void validate_harmonic_bond_coeff_params(
-    const StyleParamMap& params,
-    const char* path) {
-  require_exact_parameter_keys(params, {"k", "r0"}, path);
-  const double k = require_real_parameter(params, "k", path);
-  const double r0 = require_real_parameter(params, "r0", path);
-  if (!std::isfinite(k) || k < 0.0) {
-    throw std::invalid_argument(std::string(path) + ".k must be finite and non-negative.");
-  }
-  if (!std::isfinite(r0) || r0 < 0.0) {
-    throw std::invalid_argument(std::string(path) + ".r0 must be finite and non-negative.");
-  }
-  const real_t k_cast = static_cast<real_t>(k);
-  const real_t r0_cast = static_cast<real_t>(r0);
-  if (!std::isfinite(static_cast<double>(k_cast)) || k_cast < real_t{0}) {
-    throw std::invalid_argument(std::string(path) + ".k must be finite and non-negative.");
-  }
-  if (!std::isfinite(static_cast<double>(r0_cast)) || r0_cast < real_t{0}) {
-    throw std::invalid_argument(std::string(path) + ".r0 must be finite and non-negative.");
-  }
-}
-
-inline void validate_harmonic_angle_coeff_params(
-    const StyleParamMap& params,
-    const char* path) {
-  require_exact_parameter_keys(params, {"k", "theta0"}, path);
-  const double k = require_real_parameter(params, "k", path);
-  const double theta0 = require_real_parameter(params, "theta0", path);
-  if (!std::isfinite(k) || k < 0.0) {
-    throw std::invalid_argument(std::string(path) + ".k must be finite and non-negative.");
-  }
-  if (!std::isfinite(theta0) || theta0 < 0.0 || theta0 > 180.0) {
-    throw std::invalid_argument(
-        std::string(path) + ".theta0 must be finite and between 0 and 180 degrees.");
-  }
-  const real_t k_cast = static_cast<real_t>(k);
-  const real_t theta0_cast = static_cast<real_t>(theta0);
-  if (!std::isfinite(static_cast<double>(k_cast)) || k_cast < real_t{0}) {
-    throw std::invalid_argument(std::string(path) + ".k must be finite and non-negative.");
-  }
-  if (!std::isfinite(static_cast<double>(theta0_cast)) ||
-      theta0_cast < real_t{0} ||
-      theta0_cast > real_t{180}) {
-    throw std::invalid_argument(
-        std::string(path) + ".theta0 must be finite and between 0 and 180 degrees.");
-  }
-}
-
-inline void validate_harmonic_dihedral_coeff_params(
-    const StyleParamMap& params,
-    const char* path) {
-  require_exact_parameter_keys(params, {"k", "d", "n"}, path);
-  const double k = require_real_parameter(params, "k", path);
-  const std::int64_t d = require_integer_parameter(params, "d", path);
-  const std::int64_t n = require_integer_parameter(params, "n", path);
-  if (!std::isfinite(k) || k < 0.0) {
-    throw std::invalid_argument(std::string(path) + ".k must be finite and non-negative.");
-  }
-  const real_t k_cast = static_cast<real_t>(k);
-  if (!std::isfinite(static_cast<double>(k_cast)) || k_cast < real_t{0}) {
-    throw std::invalid_argument(std::string(path) + ".k must be finite and non-negative.");
-  }
-  if (d != -1 && d != 1) {
-    throw std::invalid_argument(std::string(path) + ".d must be +1 or -1.");
-  }
-  if (n < 0) {
-    throw std::invalid_argument(std::string(path) + ".n must be non-negative.");
-  }
-  if (n > std::numeric_limits<int>::max()) {
-    throw std::invalid_argument(
-        std::string(path) + ".n contains values outside the supported int range.");
   }
 }
 
@@ -496,15 +408,14 @@ inline std::vector<type_id_t> active_dihedral_types(const SystemSpec& system) {
   return result;
 }
 
-template <typename CoeffSpec, typename ValidateParams>
+template <typename CoeffSpec>
 inline void validate_listed_coeff_coverage(
     const std::vector<type_id_t>& active_types,
     const std::vector<CoeffSpec>& coeffs,
     const std::string& active_style,
     const char* style_label,
     const char* coeff_label,
-    const char* topology_label,
-    ValidateParams validate_params) {
+    const char* topology_label) {
   std::unordered_set<type_id_t> active_type_set(
       active_types.begin(),
       active_types.end());
@@ -522,7 +433,6 @@ inline void validate_listed_coeff_coverage(
       throw std::invalid_argument(
           std::string(coeff_label) + "s must not contain duplicates.");
     }
-    validate_params(coeff.params, coeff_label);
   }
   for (const type_id_t active_type : active_types) {
     if (observed_coeffs.count(active_type) == 0) {
@@ -612,14 +522,6 @@ inline void validate_forcefield_spec(
           "forcefield.bond_coeffs require active bond_style.");
     }
   } else {
-    if (forcefield.bond_style->style != "harmonic") {
-      throw std::invalid_argument(
-          "forcefield.bond_style supports only harmonic.");
-    }
-    if (!forcefield.bond_style->params.empty()) {
-      throw std::invalid_argument(
-          "forcefield.bond_style harmonic does not accept parameters.");
-    }
     if (system.topology.bonds.empty()) {
       throw std::invalid_argument(
           "forcefield.bond_style requires system.topology.bonds.");
@@ -631,8 +533,7 @@ inline void validate_forcefield_spec(
         forcefield.bond_style->style,
         "bond_style",
         "forcefield.bond_coeff",
-        "topology bond",
-        validate_harmonic_bond_coeff_params);
+        "topology bond");
   }
 
   if (!forcefield.angle_style) {
@@ -645,14 +546,6 @@ inline void validate_forcefield_spec(
           "forcefield.angle_coeffs require active angle_style.");
     }
   } else {
-    if (forcefield.angle_style->style != "harmonic") {
-      throw std::invalid_argument(
-          "forcefield.angle_style supports only harmonic.");
-    }
-    if (!forcefield.angle_style->params.empty()) {
-      throw std::invalid_argument(
-          "forcefield.angle_style harmonic does not accept parameters.");
-    }
     if (system.topology.angles.empty()) {
       throw std::invalid_argument(
           "forcefield.angle_style requires system.topology.angles.");
@@ -663,8 +556,7 @@ inline void validate_forcefield_spec(
         forcefield.angle_style->style,
         "angle_style",
         "forcefield.angle_coeff",
-        "topology angle",
-        validate_harmonic_angle_coeff_params);
+        "topology angle");
   }
 
   if (!forcefield.dihedral_style) {
@@ -677,14 +569,6 @@ inline void validate_forcefield_spec(
           "forcefield.dihedral_coeffs require active dihedral_style.");
     }
   } else {
-    if (forcefield.dihedral_style->style != "harmonic") {
-      throw std::invalid_argument(
-          "forcefield.dihedral_style supports only harmonic.");
-    }
-    if (!forcefield.dihedral_style->params.empty()) {
-      throw std::invalid_argument(
-          "forcefield.dihedral_style harmonic does not accept parameters.");
-    }
     if (system.topology.dihedrals.empty()) {
       throw std::invalid_argument(
           "forcefield.dihedral_style requires system.topology.dihedrals.");
@@ -695,8 +579,7 @@ inline void validate_forcefield_spec(
         forcefield.dihedral_style->style,
         "dihedral_style",
         "forcefield.dihedral_coeff",
-        "topology dihedral",
-        validate_harmonic_dihedral_coeff_params);
+        "topology dihedral");
   }
 }
 

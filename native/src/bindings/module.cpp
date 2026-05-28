@@ -23,10 +23,21 @@ py::dict build_info() {
   return info;
 }
 
+void check_python_interrupt() {
+  py::gil_scoped_acquire acquire;
+  if (PyErr_CheckSignals() != 0) {
+    throw py::error_already_set();
+  }
+}
+
 void execute_simulation(const py::object& spec) {
   const input::SimulationSpec native_spec = parse_native_spec(spec);
-  simulation::SimulationRun simulation_run(native_spec);
+  simulation::SimulationRun simulation_run(
+      native_spec,
+      []() { check_python_interrupt(); });
+
   try {
+    py::gil_scoped_release release;
     simulation_run.execute();
   } catch (const simulation::NotImplementedFeature& error) {
     PyErr_SetString(PyExc_NotImplementedError, error.what());

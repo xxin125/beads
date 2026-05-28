@@ -363,6 +363,16 @@ class LogOutput::Impl {
       std::ostringstream value;
       value << std::setprecision(9) << summary.run_wall_s;
       message << '\n' << format_log_label_value("run_wall_s", value.str());
+
+      if (summary.run_wall_s >= 60.0) {
+        int h = static_cast<int>(summary.run_wall_s) / 3600;
+        int m = (static_cast<int>(summary.run_wall_s) % 3600) / 60;
+        double s = summary.run_wall_s - h * 3600.0 - m * 60.0;
+        std::ostringstream time_val;
+        if (h > 0) time_val << h << "h ";
+        time_val << m << "m " << std::fixed << std::setprecision(2) << s << "s";
+        message << '\n' << format_log_label_value("run_wall_time", time_val.str());
+      }
     }
     if (summary.steps_per_second) {
       std::ostringstream value;

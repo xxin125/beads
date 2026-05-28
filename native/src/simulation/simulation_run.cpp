@@ -2,6 +2,7 @@
 
 #include <beads/core/cuda_check.cuh>
 
+#include <algorithm>
 #include <chrono>
 
 namespace beads {
@@ -59,7 +60,9 @@ output::log::LogRunStartSummary make_log_run_start_summary(
 
 }  // namespace
 
-SimulationRun::SimulationRun(const input::SimulationSpec& spec)
+SimulationRun::SimulationRun(
+    const input::SimulationSpec& spec,
+    InterruptCheckCallback interrupt_check)
     : host_state_(spec.system),
       force_field_(spec.forcefield, host_state_),
       streams_(),
@@ -82,7 +85,15 @@ SimulationRun::SimulationRun(const input::SimulationSpec& spec)
           host_state_,
           neighbor_system_,
           dynamics_)),
-      runsteps_(spec.runsteps) {
+      runsteps_(spec.runsteps),
+      interrupt_check_(std::move(interrupt_check)) {
+
+  // Dynamic interrupt interval based on particle count:
+  // N=1000 -> every 100 steps
+  // N=50,000 -> every 2 steps
+  // N>100,000 -> every 1 step
+  interrupt_check_interval_ = std::max<runstep_t>(1, 100000 / std::max<index_t>(1, spec.system.n_particles));
+
   output_.prepare(
       spec.system.n_particles,
       host_state_.units(),
@@ -172,6 +183,21 @@ void SimulationRun::execute_zero_step_run() {
   finish_run();
 }
 
+void SimulationRun::check_interrupt() {
+  if (interrupt_check_) {
+    interrupt_check_();
+  }
+}
+
+void SimulationRun::synchronize_streams_noexcept() noexcept {
+  if (streams_.dynamics_stream() != nullptr) {
+    cudaStreamSynchronize(streams_.dynamics_stream());
+  }
+  if (streams_.transfer_stream() != nullptr) {
+    cudaStreamSynchronize(streams_.transfer_stream());
+  }
+}
+
 void SimulationRun::execute_dynamics_run(
     const dynamics::DynamicsProgram& dynamics) {
   run_start_time_ = std::chrono::steady_clock::now();
@@ -179,9 +205,19 @@ void SimulationRun::execute_dynamics_run(
   const forcefield::ForceEvalResult initial_force_result =
       initialize_force_state();
   stage_output_for_step(runstep_t{0}, initial_force_result);
-  for (runstep_t step = 0; step < runsteps_; ++step) {
-    advance_dynamics_step(dynamics, step + 1);
+
+  try {
+    for (runstep_t step = 0; step < runsteps_; ++step) {
+      if (step % interrupt_check_interval_ == 0) {
+        check_interrupt();
+      }
+      advance_dynamics_step(dynamics, step + 1);
+    }
+  } catch (...) {
+    synchronize_streams_noexcept();
+    throw;
   }
+
   finish_run();
 }
 

@@ -8,9 +8,8 @@ from typing import Any, Mapping
 import numpy as np
 
 from ._params import freeze_scalar_params, immutable_mapping
-from ._validation import nonnegative_real, positive_int, positive_type_id
+from ._validation import positive_int, positive_type_id
 
-_MAX_ANGLE_DEGREES = 180.0
 _DEFAULT_BONDED_EXCLUSION_DISTANCE = 2
 
 
@@ -128,19 +127,10 @@ class ForceField:
         self._require_mutable()
         if self._bond_style is not None:
             raise ValueError("ForceField supports one active bond_style.")
-        style_name = _style_name("bond_style", style)
-        if style_name in {"hybrid", "hybrid/overlay"}:
-            raise ValueError("ForceField does not support hybrid bond_style.")
-        if style_name != "harmonic":
-            raise ValueError('ForceField supports only bond_style("harmonic").')
-        frozen_params = freeze_scalar_params(
-            "bond parameter",
-            params,
-            allow_bool=False,
+        self._bond_style = (
+            _style_name("bond_style", style),
+            freeze_scalar_params("bond parameter", params, allow_bool=True),
         )
-        if frozen_params:
-            raise ValueError('bond_style("harmonic") does not accept parameters.')
-        self._bond_style = (style_name, frozen_params)
         return self
 
     def bond_coeff(
@@ -160,26 +150,9 @@ class ForceField:
         type_id = positive_type_id("bond_coeff type", type)
         if type_id in self._bond_coeffs:
             raise ValueError(f"bond_coeff for type {type_id} is already set.")
-        if set(params) != {"k", "r0"}:
-            missing = sorted({"k", "r0"} - set(params))
-            extra = sorted(set(params) - {"k", "r0"})
-            if missing:
-                raise ValueError(
-                    "bond_coeff harmonic parameters must include k and r0; "
-                    f"missing {missing}."
-                )
-            raise ValueError(
-                "bond_coeff harmonic parameters support only k and r0; "
-                f"got {extra}."
-            )
         self._bond_coeffs[type_id] = (
             style_name,
-            immutable_mapping(
-                {
-                    "k": nonnegative_real("bond_coeff k", params["k"]),
-                    "r0": nonnegative_real("bond_coeff r0", params["r0"]),
-                }
-            ),
+            freeze_scalar_params("bond parameter", params, allow_bool=True),
         )
         return self
 
@@ -192,19 +165,10 @@ class ForceField:
         self._require_mutable()
         if self._angle_style is not None:
             raise ValueError("ForceField supports one active angle_style.")
-        style_name = _style_name("angle_style", style)
-        if style_name in {"hybrid", "hybrid/overlay"}:
-            raise ValueError("ForceField does not support hybrid angle_style.")
-        if style_name != "harmonic":
-            raise ValueError('ForceField supports only angle_style("harmonic").')
-        frozen_params = freeze_scalar_params(
-            "angle parameter",
-            params,
-            allow_bool=False,
+        self._angle_style = (
+            _style_name("angle_style", style),
+            freeze_scalar_params("angle parameter", params, allow_bool=True),
         )
-        if frozen_params:
-            raise ValueError('angle_style("harmonic") does not accept parameters.')
-        self._angle_style = (style_name, frozen_params)
         return self
 
     def angle_coeff(
@@ -224,29 +188,9 @@ class ForceField:
         type_id = positive_type_id("angle_coeff type", type)
         if type_id in self._angle_coeffs:
             raise ValueError(f"angle_coeff for type {type_id} is already set.")
-        if set(params) != {"k", "theta0"}:
-            missing = sorted({"k", "theta0"} - set(params))
-            extra = sorted(set(params) - {"k", "theta0"})
-            if missing:
-                raise ValueError(
-                    "angle_coeff harmonic parameters must include k and theta0; "
-                    f"missing {missing}."
-                )
-            raise ValueError(
-                "angle_coeff harmonic parameters support only k and theta0; "
-                f"got {extra}."
-            )
-        theta0 = nonnegative_real("angle_coeff theta0", params["theta0"])
-        if theta0 > _MAX_ANGLE_DEGREES:
-            raise ValueError("angle_coeff theta0 must be between 0 and 180 degrees.")
         self._angle_coeffs[type_id] = (
             style_name,
-            immutable_mapping(
-                {
-                    "k": nonnegative_real("angle_coeff k", params["k"]),
-                    "theta0": theta0,
-                }
-            ),
+            freeze_scalar_params("angle parameter", params, allow_bool=True),
         )
         return self
 
@@ -259,19 +203,10 @@ class ForceField:
         self._require_mutable()
         if self._dihedral_style is not None:
             raise ValueError("ForceField supports one active dihedral_style.")
-        style_name = _style_name("dihedral_style", style)
-        if style_name in {"hybrid", "hybrid/overlay"}:
-            raise ValueError("ForceField does not support hybrid dihedral_style.")
-        if style_name != "harmonic":
-            raise ValueError('ForceField supports only dihedral_style("harmonic").')
-        frozen_params = freeze_scalar_params(
-            "dihedral parameter",
-            params,
-            allow_bool=False,
+        self._dihedral_style = (
+            _style_name("dihedral_style", style),
+            freeze_scalar_params("dihedral parameter", params, allow_bool=True),
         )
-        if frozen_params:
-            raise ValueError('dihedral_style("harmonic") does not accept parameters.')
-        self._dihedral_style = (style_name, frozen_params)
         return self
 
     def dihedral_coeff(
@@ -291,27 +226,9 @@ class ForceField:
         type_id = positive_type_id("dihedral_coeff type", type)
         if type_id in self._dihedral_coeffs:
             raise ValueError(f"dihedral_coeff for type {type_id} is already set.")
-        if set(params) != {"k", "d", "n"}:
-            missing = sorted({"k", "d", "n"} - set(params))
-            extra = sorted(set(params) - {"k", "d", "n"})
-            if missing:
-                raise ValueError(
-                    "dihedral_coeff harmonic parameters must include k, d, and n; "
-                    f"missing {missing}."
-                )
-            raise ValueError(
-                "dihedral_coeff harmonic parameters support only k, d, and n; "
-                f"got {extra}."
-            )
         self._dihedral_coeffs[type_id] = (
             style_name,
-            immutable_mapping(
-                {
-                    "k": nonnegative_real("dihedral_coeff k", params["k"]),
-                    "d": _dihedral_sign(params["d"]),
-                    "n": _nonnegative_int("dihedral_coeff n", params["n"]),
-                }
-            ),
+            freeze_scalar_params("dihedral parameter", params, allow_bool=True),
         )
         return self
 
@@ -441,28 +358,6 @@ def _style_name(context: str, style: object) -> str:
     if not style:
         raise ValueError(f"{context} name must not be empty")
     return style
-
-
-def _nonnegative_int(name: str, value: object) -> int:
-    if isinstance(value, (bool, np.bool_)):
-        raise TypeError(f"{name} must be an integer")
-    if not isinstance(value, (int, np.integer)):
-        raise TypeError(f"{name} must be an integer")
-    result = int(value)
-    if result < 0:
-        raise ValueError(f"{name} must be non-negative")
-    return result
-
-
-def _dihedral_sign(value: object) -> int:
-    if isinstance(value, (bool, np.bool_)):
-        raise TypeError("dihedral_coeff d must be an integer")
-    if not isinstance(value, (int, np.integer)):
-        raise TypeError("dihedral_coeff d must be an integer")
-    result = int(value)
-    if result not in {-1, 1}:
-        raise ValueError("dihedral_coeff d must be +1 or -1")
-    return result
 
 
 def _require_pair_coverage(

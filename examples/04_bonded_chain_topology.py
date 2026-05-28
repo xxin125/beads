@@ -32,12 +32,16 @@ system.set_topology(
     dihedrals=fixture.dihedrals,
 )
 forcefield = beads.ForceField()
+# Pair LJ: U = 4 * epsilon * [(sigma/r)^12 - (sigma/r)^6]
 forcefield.pair_style("lj", cutoff=0.75)
 forcefield.pair_coeff("lj", type_i=1, type_j=1, epsilon=0.5, sigma=0.34)
+# Bond harmonic: U = 0.5 * k * (r - r0)^2
 forcefield.bond_style("harmonic")
 forcefield.bond_coeff("harmonic", type=1, k=500.0, r0=0.35)
+# Angle harmonic: U = 0.5 * k * (theta - theta0)^2
 forcefield.angle_style("harmonic")
 forcefield.angle_coeff("harmonic", type=1, k=5.0, theta0=165.0)
+# Dihedral harmonic: U = k * [1 + d * cos(n * phi)]
 forcefield.dihedral_style("harmonic")
 forcefield.dihedral_coeff("harmonic", type=1, k=1.0, d=1, n=1)
 

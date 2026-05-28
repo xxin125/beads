@@ -82,10 +82,6 @@ bool NeighborSystem::update_after_position_change(
     runstep_t physical_step,
     cudaStream_t stream) {
   if (rebuild_after_every_position_update()) {
-    if (rebuild_tracker_.exceeds_displacement_threshold(
-            particles, box, rebuild_threshold_sq(), stream)) {
-      ++dangerous_rebuild_count_;
-    }
     rebuild_now(particles, box, stream);
     return true;
   }

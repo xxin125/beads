@@ -24,6 +24,7 @@ system = beads.System(
     units=fixture.units,
 )
 forcefield = beads.ForceField()
+# Pair LJ: U = 4 * epsilon * [(sigma/r)^12 - (sigma/r)^6]
 forcefield.pair_style("lj", cutoff=0.9)
 forcefield.pair_coeff("lj", type_i=1, type_j=1, epsilon=1.0, sigma=0.34)
 dynamics = beads.Dynamics("velocity_verlet", dt=0.001)
