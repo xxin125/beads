@@ -1,6 +1,7 @@
 #include "bond_harmonic.hpp"
 
 #include <beads/core/cuda_check.cuh>
+#include <forcefield/force_launch.cuh>
 #include <system/geometry/box_geometry_view.cuh>
 #include <system/state/device_forces.cuh>
 #include <system/state/device_particles.cuh>
@@ -10,8 +11,6 @@
 #include <cub/block/block_reduce.cuh>
 
 #include <cmath>
-#include <cstddef>
-#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -21,16 +20,6 @@ namespace bond {
 namespace {
 
 inline constexpr int kBondForceBlockSize = 256;
-
-int bond_force_grid_size(index_t bond_count) {
-  const auto items = static_cast<std::size_t>(bond_count);
-  const auto block = static_cast<std::size_t>(kBondForceBlockSize);
-  const std::size_t block_count = (items + block - 1) / block;
-  if (block_count > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-    throw std::overflow_error("Harmonic bond CUDA grid size exceeds launch capacity.");
-  }
-  return static_cast<int>(block_count);
-}
 
 template <bool NeedBondPotentialEnergy, bool NeedGlobalScalarVirial>
 __global__ void compute_harmonic_bond_forces_kernel(
@@ -211,7 +200,7 @@ ForceEvalObservableLayout HarmonicBondModel::observable_layout(
   return make_component_observable_layout(
       request,
       ForceObservable::BondPotentialEnergy,
-      static_cast<index_t>(bond_force_grid_size(bond_count_)),
+      static_cast<index_t>(force_grid_size(bond_count_, kBondForceBlockSize)),
       "Bond(\"harmonic\")");
 }
 
@@ -221,7 +210,7 @@ void HarmonicBondModel::add_forces(
     const system::state::TagToSlotMap& tag_to_slot_map,
     const system::geometry::BoxGeometry& box,
     cudaStream_t stream) const {
-  const int grid_size = bond_force_grid_size(bond_count_);
+  const int grid_size = force_grid_size(bond_count_, kBondForceBlockSize);
   compute_harmonic_bond_forces_kernel<false, false><<<
       grid_size,
       kBondForceBlockSize,
@@ -256,7 +245,7 @@ void HarmonicBondModel::add_forces_and_observables(
     return;
   }
 
-  const int grid_size = bond_force_grid_size(bond_count_);
+  const int grid_size = force_grid_size(bond_count_, kBondForceBlockSize);
   if (need_bond_pe) {
     require_observable_buffer_shape(
         buffers,

@@ -1,6 +1,7 @@
 #include "dihedral_harmonic.hpp"
 
 #include <beads/core/cuda_check.cuh>
+#include <forcefield/force_launch.cuh>
 #include <system/geometry/box_geometry_view.cuh>
 #include <system/state/device_forces.cuh>
 #include <system/state/device_particles.cuh>
@@ -10,8 +11,6 @@
 #include <cub/block/block_reduce.cuh>
 
 #include <cmath>
-#include <cstddef>
-#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -61,17 +60,6 @@ __device__ real_t clamp_cosine(real_t value) noexcept {
     return real_t{-1};
   }
   return value;
-}
-
-int dihedral_force_grid_size(index_t dihedral_count) {
-  const auto items = static_cast<std::size_t>(dihedral_count);
-  const auto block = static_cast<std::size_t>(kDihedralForceBlockSize);
-  const std::size_t block_count = (items + block - 1) / block;
-  if (block_count > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-    throw std::overflow_error(
-        "Harmonic dihedral CUDA grid size exceeds launch capacity.");
-  }
-  return static_cast<int>(block_count);
 }
 
 template <bool NeedDihedralPotentialEnergy, bool NeedGlobalScalarVirial>
@@ -360,7 +348,7 @@ ForceEvalObservableLayout HarmonicDihedralModel::observable_layout(
   return make_component_observable_layout(
       request,
       ForceObservable::DihedralPotentialEnergy,
-      static_cast<index_t>(dihedral_force_grid_size(dihedral_count_)),
+      static_cast<index_t>(force_grid_size(dihedral_count_, kDihedralForceBlockSize)),
       "Dihedral(\"harmonic\")");
 }
 
@@ -370,7 +358,7 @@ void HarmonicDihedralModel::add_forces(
     const system::state::TagToSlotMap& tag_to_slot_map,
     const system::geometry::BoxGeometry& box,
     cudaStream_t stream) const {
-  const int grid_size = dihedral_force_grid_size(dihedral_count_);
+  const int grid_size = force_grid_size(dihedral_count_, kDihedralForceBlockSize);
   compute_harmonic_dihedral_forces_kernel<false, false><<<
       grid_size,
       kDihedralForceBlockSize,
@@ -405,7 +393,7 @@ void HarmonicDihedralModel::add_forces_and_observables(
     return;
   }
 
-  const int grid_size = dihedral_force_grid_size(dihedral_count_);
+  const int grid_size = force_grid_size(dihedral_count_, kDihedralForceBlockSize);
   if (need_dihedral_pe) {
     require_observable_buffer_shape(
         buffers,

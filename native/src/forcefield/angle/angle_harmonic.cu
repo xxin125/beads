@@ -1,6 +1,7 @@
 #include "angle_harmonic.hpp"
 
 #include <beads/core/cuda_check.cuh>
+#include <forcefield/force_launch.cuh>
 #include <system/geometry/box_geometry_view.cuh>
 #include <system/state/device_forces.cuh>
 #include <system/state/device_particles.cuh>
@@ -10,8 +11,6 @@
 #include <cub/block/block_reduce.cuh>
 
 #include <cmath>
-#include <cstddef>
-#include <limits>
 #include <stdexcept>
 #include <vector>
 
@@ -50,16 +49,6 @@ __device__ real_t harmonic_angle_energy(
     real_t theta) noexcept {
   const real_t dtheta = theta - coeff.theta0_rad;
   return real_t{0.5} * coeff.k * dtheta * dtheta;
-}
-
-int angle_force_grid_size(index_t angle_count) {
-  const auto items = static_cast<std::size_t>(angle_count);
-  const auto block = static_cast<std::size_t>(kAngleForceBlockSize);
-  const std::size_t block_count = (items + block - 1) / block;
-  if (block_count > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-    throw std::overflow_error("Harmonic angle CUDA grid size exceeds launch capacity.");
-  }
-  return static_cast<int>(block_count);
 }
 
 template <bool NeedAnglePotentialEnergy, bool NeedGlobalScalarVirial>
@@ -295,7 +284,7 @@ ForceEvalObservableLayout HarmonicAngleModel::observable_layout(
   return make_component_observable_layout(
       request,
       ForceObservable::AnglePotentialEnergy,
-      static_cast<index_t>(angle_force_grid_size(angle_count_)),
+      static_cast<index_t>(force_grid_size(angle_count_, kAngleForceBlockSize)),
       "Angle(\"harmonic\")");
 }
 
@@ -305,7 +294,7 @@ void HarmonicAngleModel::add_forces(
     const system::state::TagToSlotMap& tag_to_slot_map,
     const system::geometry::BoxGeometry& box,
     cudaStream_t stream) const {
-  const int grid_size = angle_force_grid_size(angle_count_);
+  const int grid_size = force_grid_size(angle_count_, kAngleForceBlockSize);
   compute_harmonic_angle_forces_kernel<false, false><<<
       grid_size,
       kAngleForceBlockSize,
@@ -340,7 +329,7 @@ void HarmonicAngleModel::add_forces_and_observables(
     return;
   }
 
-  const int grid_size = angle_force_grid_size(angle_count_);
+  const int grid_size = force_grid_size(angle_count_, kAngleForceBlockSize);
   if (need_angle_pe) {
     require_observable_buffer_shape(
         buffers,

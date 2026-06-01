@@ -1,6 +1,7 @@
 #include "pair_lj.hpp"
 
 #include <beads/core/cuda_check.cuh>
+#include <forcefield/force_launch.cuh>
 #include <system/geometry/box_geometry_view.cuh>
 #include <simulation/neighbor/neighbor_list.cuh>
 #include <system/state/device_forces.cuh>
@@ -8,8 +9,6 @@
 
 #include <cub/block/block_reduce.cuh>
 
-#include <cstddef>
-#include <limits>
 #include <stdexcept>
 
 namespace beads {
@@ -18,19 +17,6 @@ namespace pair {
 namespace {
 
 inline constexpr int kPairForceBlockSize = 256;
-
-int pair_force_grid_size(index_t n_particles, int block_size) {
-  if (block_size <= 0) {
-    throw std::invalid_argument("CUDA block size must be positive.");
-  }
-  const auto items = static_cast<std::size_t>(n_particles);
-  const auto block = static_cast<std::size_t>(block_size);
-  const std::size_t block_count = (items + block - 1) / block;
-  if (block_count > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-    throw std::overflow_error("CUDA grid size exceeds launch capacity.");
-  }
-  return static_cast<int>(block_count);
-}
 
 __global__ void compute_lj_pair_forces_kernel(
     system::state::DeviceParticlesConstView particles,
@@ -255,7 +241,7 @@ ForceEvalObservableLayout LjPairModel::observable_layout(
   return make_component_observable_layout(
       request,
       ForceObservable::PairPotentialEnergy,
-      static_cast<index_t>(pair_force_grid_size(n_particles, kPairForceBlockSize)),
+      static_cast<index_t>(force_grid_size(n_particles, kPairForceBlockSize)),
       "Pair(\"lj\")");
 }
 
@@ -265,7 +251,7 @@ void LjPairModel::compute_forces(
     const simulation::neighbor::NeighborList& neighbor_list,
     const system::geometry::BoxGeometry& box,
     cudaStream_t stream) const {
-  const int grid_size = pair_force_grid_size(
+  const int grid_size = force_grid_size(
       particles.n_particles(),
       kPairForceBlockSize);
   compute_lj_pair_forces_kernel<<<grid_size, kPairForceBlockSize, 0, stream>>>(
@@ -294,7 +280,7 @@ void LjPairModel::evaluate_forces(
     return;
   }
 
-  const int grid_size = pair_force_grid_size(
+  const int grid_size = force_grid_size(
       particles.n_particles(),
       kPairForceBlockSize);
   if (need_pair_pe) {
