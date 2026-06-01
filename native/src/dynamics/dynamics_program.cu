@@ -37,29 +37,17 @@ DynamicsProgram::DynamicsProgram(
   }
 }
 
-std::optional<DynamicsProgram> make_dynamics_program(
+DynamicsProgram make_dynamics_program(
     const input::DynamicsSpec& dynamics,
     const system::units::UnitSystem& units) {
-  if (dynamics.style == "none") {
-    if (!dynamics.params.empty()) {
-      throw std::invalid_argument("dynamics.params must be empty for style \"none\".");
-    }
-    if (dynamics.thermostat) {
-      throw std::invalid_argument(
-          "dynamics.thermostat requires dynamics.style velocity_verlet.");
-    }
-    return std::nullopt;
-  }
-
   if (dynamics.style == "velocity_verlet") {
-    return std::optional<DynamicsProgram>(
-        std::in_place,
+    return DynamicsProgram(
         integrator::make_velocity_verlet_integrator(dynamics),
         make_thermostat(dynamics.thermostat, units));
   }
 
   throw std::invalid_argument(
-      "dynamics.style must be \"none\" or \"velocity_verlet\".");
+      "dynamics.style must be \"velocity_verlet\".");
 }
 
 real_t DynamicsProgram::dt() const {

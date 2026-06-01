@@ -89,7 +89,7 @@ def _style_name(style: object) -> str:
         raise TypeError("Dynamics style must be a string.")
     if not style:
         raise ValueError("Dynamics style must not be empty.")
-    if style not in {"none", "velocity_verlet"}:
+    if style != "velocity_verlet":
         raise ValueError(f"Unknown Dynamics style {style!r}.")
     return style
 
@@ -98,11 +98,6 @@ def _validate_dynamics_contract(
     style: str,
     params: Mapping[str, Any],
 ) -> None:
-    if style == "none":
-        if params:
-            raise ValueError('Dynamics("none") does not accept parameters.')
-        return
-
     if style == "velocity_verlet":
         if set(params) != {"dt"}:
             raise ValueError('Dynamics("velocity_verlet") requires exactly parameter "dt".')

@@ -11,18 +11,11 @@
 #include <system/state/device_state.cuh>
 #include <system/state/host_state.hpp>
 
-#include <optional>
-#include <stdexcept>
 #include <chrono>
 #include <functional>
 
 namespace beads {
 namespace simulation {
-
-class NotImplementedFeature : public std::runtime_error {
- public:
-  using std::runtime_error::runtime_error;
-};
 
 class SimulationRun {
  public:
@@ -40,7 +33,6 @@ class SimulationRun {
   const system::state::DeviceState& device_state() const noexcept { return device_state_; }
 
  private:
-  const dynamics::DynamicsProgram& require_dynamics_program() const;
   forcefield::ForceEvalResult compute_forces_for_step(runstep_t step);
   forcefield::ForceEvalResult initialize_force_state();
   void stage_output_for_step(
@@ -60,7 +52,7 @@ class SimulationRun {
   RunStreams streams_;
   system::state::DeviceState device_state_;
   simulation::neighbor::NeighborSystem neighbor_system_;
-  std::optional<dynamics::DynamicsProgram> dynamics_;
+  dynamics::DynamicsProgram dynamics_;
   output::OutputDemand output_demand_;
   forcefield::ForceEvaluator force_evaluator_;
   output::OutputSystem output_;

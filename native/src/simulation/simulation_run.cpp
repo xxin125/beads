@@ -13,7 +13,7 @@ output::log::LogRunStartSummary make_log_run_start_summary(
     const input::SimulationSpec& spec,
     const system::state::HostState& host_state,
     const neighbor::NeighborSystem& neighbor_system,
-    const std::optional<dynamics::DynamicsProgram>& dynamics) {
+    const dynamics::DynamicsProgram& dynamics) {
   output::log::LogRunStartSummary summary;
   summary.units = host_state.units().public_name;
   summary.n_particles = host_state.particles().n_particles;
@@ -21,13 +21,9 @@ output::log::LogRunStartSummary make_log_run_start_summary(
   summary.box_lower = host_state.box().lower;
   summary.box_upper = host_state.box().upper;
   summary.box_lengths = host_state.box().lengths;
-  summary.dynamics_style = spec.dynamics.style;
-  if (dynamics) {
-    summary.dynamics_dt = dynamics->dt();
-    summary.thermostat_style = dynamics->thermostat_style();
-  } else if (spec.dynamics.thermostat) {
-    summary.thermostat_style = spec.dynamics.thermostat->style;
-  }
+  summary.dynamics_style = dynamics.style();
+  summary.dynamics_dt = dynamics.dt();
+  summary.thermostat_style = dynamics.thermostat_style();
   summary.cutoff_buffer = spec.neighbor.cutoff_buffer;
   summary.neighbor_path = neighbor_system.path_name();
   summary.rebuild_check_every = spec.neighbor.rebuild_check_every;
@@ -99,15 +95,6 @@ SimulationRun::SimulationRun(
       spec.system.n_particles,
       host_state_.units(),
       force_evaluator_.observable_layout());
-}
-
-const dynamics::DynamicsProgram& SimulationRun::require_dynamics_program() const {
-  if (!dynamics_) {
-    throw NotImplementedFeature(
-        "Dynamics(\"none\") supports only zero-step force evaluation. "
-        "Use Dynamics(\"velocity_verlet\", dt=...) for positive runsteps.");
-  }
-  return *dynamics_;
 }
 
 forcefield::ForceEvalResult SimulationRun::compute_forces_for_step(
@@ -253,8 +240,7 @@ void SimulationRun::execute() {
     return;
   }
 
-  const dynamics::DynamicsProgram& dynamics = require_dynamics_program();
-  execute_dynamics_run(dynamics);
+  execute_dynamics_run(dynamics_);
 }
 
 }  // namespace simulation

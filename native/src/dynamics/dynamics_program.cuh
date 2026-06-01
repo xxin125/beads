@@ -10,7 +10,6 @@
 #include <cuda_runtime.h>
 
 #include <memory>
-#include <optional>
 
 namespace beads {
 namespace input {
@@ -55,7 +54,7 @@ class DynamicsProgram {
   std::unique_ptr<thermostat::Thermostat> thermostat_;
 };
 
-std::optional<DynamicsProgram> make_dynamics_program(
+DynamicsProgram make_dynamics_program(
     const input::DynamicsSpec& dynamics,
     const system::units::UnitSystem& units);
 

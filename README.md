@@ -177,8 +177,8 @@ requires a `units=` argument and does not perform unit conversion.
 - Units: `reduced` and `nm_kjmol`
 - Pair style: Lennard-Jones through `pair_style("lj", cutoff=..., shift=...)`
 - Listed forces: harmonic bonds, angles, and dihedrals
-- Dynamics: `Dynamics("none")` for zero-step evaluation and
-  `Dynamics("velocity_verlet", dt=...)` for time integration
+- Dynamics: `Dynamics("velocity_verlet", dt=...)` for zero-step evaluation and
+  time integration
 - Thermostat: global Berendsen thermostat for velocity-Verlet dynamics
 - Neighbor controls: cutoff buffer, rebuild cadence, sort cadence, and maximum
   neighbors

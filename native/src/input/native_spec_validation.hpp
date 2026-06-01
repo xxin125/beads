@@ -584,15 +584,29 @@ inline void validate_forcefield_spec(
 }
 
 inline void validate_dynamics_spec(const DynamicsSpec& dynamics) {
-  if (dynamics.style.empty()) {
-    throw std::invalid_argument("dynamics.style must not be empty.");
+  if (dynamics.style != "velocity_verlet") {
+    throw std::invalid_argument(
+        "dynamics.style must be velocity_verlet.");
+  }
+  require_exact_parameter_keys(
+      dynamics.params,
+      {"dt"},
+      "dynamics.params");
+  const double dt = require_real_parameter(
+      dynamics.params,
+      "dt",
+      "dynamics.params");
+  if (!std::isfinite(dt) || dt <= 0.0) {
+    throw std::invalid_argument(
+        "dynamics.params.dt must be finite and positive.");
+  }
+  const real_t dt_cast = static_cast<real_t>(dt);
+  if (!std::isfinite(static_cast<double>(dt_cast)) || dt_cast <= real_t{0}) {
+    throw std::invalid_argument(
+        "dynamics.params.dt must be finite and positive.");
   }
   if (!dynamics.thermostat) {
     return;
-  }
-  if (dynamics.style != "velocity_verlet") {
-    throw std::invalid_argument(
-        "dynamics.thermostat requires dynamics.style velocity_verlet.");
   }
   if (dynamics.thermostat->style != "berendsen") {
     throw std::invalid_argument(

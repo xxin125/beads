@@ -35,7 +35,7 @@ default_forcefield.bond_coeff("harmonic", type=1, k=0.0, r0=0.35)
 default_simulation = beads.Simulation(
     system=default_system,
     forcefield=default_forcefield,
-    dynamics=beads.Dynamics("none"),
+    dynamics=beads.Dynamics("velocity_verlet", dt=0.001),
 )
 default_simulation.set_runsteps(0)
 default_simulation.set_thermo(every=1, prefix=default_prefix)
@@ -73,7 +73,7 @@ distance_three_forcefield.exclude_bonded(distance=3)
 distance_three_simulation = beads.Simulation(
     system=distance_three_system,
     forcefield=distance_three_forcefield,
-    dynamics=beads.Dynamics("none"),
+    dynamics=beads.Dynamics("velocity_verlet", dt=0.001),
 )
 distance_three_simulation.set_runsteps(0)
 distance_three_simulation.set_thermo(every=1, prefix=distance_three_prefix)

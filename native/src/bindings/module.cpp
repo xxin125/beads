@@ -6,8 +6,6 @@
 
 #include <beads/core/types.hpp>
 
-#include <stdexcept>
-
 namespace py = pybind11;
 
 namespace beads {
@@ -41,13 +39,8 @@ void execute_simulation(const py::object& spec) {
       native_spec,
       []() { check_python_interrupt(); });
 
-  try {
-    py::gil_scoped_release release;
-    simulation_run.execute();
-  } catch (const simulation::NotImplementedFeature& error) {
-    PyErr_SetString(PyExc_NotImplementedError, error.what());
-    throw py::error_already_set();
-  }
+  py::gil_scoped_release release;
+  simulation_run.execute();
 }
 
 }  // namespace
