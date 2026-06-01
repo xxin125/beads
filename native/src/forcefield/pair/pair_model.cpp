@@ -93,6 +93,27 @@ real_t PairModel::require_positive_real_parameter(
       owner_label(style_name_, owner));
 }
 
+void PairModel::require_allowed_parameter_keys(
+    const input::StyleParamMap& params,
+    std::initializer_list<const char*> allowed_keys,
+    std::string_view owner) const {
+  require_allowed_style_parameter_keys(
+      params,
+      allowed_keys,
+      owner_label(style_name_, owner));
+}
+bool PairModel::optional_boolean_parameter(
+    const input::StyleParamMap& params,
+    const char* key,
+    bool default_value,
+    std::string_view owner) const {
+  return optional_boolean_style_parameter(
+      params,
+      key,
+      default_value,
+      owner_label(style_name_, owner));
+}
+
 void PairModel::require_not_configured() const {
   if (configured_) {
     throw std::logic_error(pair_label() + " is already configured.");

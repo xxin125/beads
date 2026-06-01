@@ -113,5 +113,34 @@ inline std::int64_t require_integer_style_parameter(
       std::string(context) + "." + key + " must be an integer.");
 }
 
+inline void require_allowed_style_parameter_keys(
+    const input::StyleParamMap& params,
+    std::initializer_list<const char*> allowed_keys,
+    std::string_view context) {
+  std::unordered_set<std::string_view> allowed(allowed_keys.begin(), allowed_keys.end());
+  for (const auto& [key, _] : params) {
+    if (allowed.find(key) == allowed.end()) {
+      throw std::invalid_argument(
+          std::string(context) + " has unsupported parameter \"" + key + "\".");
+    }
+  }
+}
+
+inline bool optional_boolean_style_parameter(
+    const input::StyleParamMap& params,
+    const char* key,
+    bool default_value,
+    std::string_view context) {
+  const auto iter = params.find(key);
+  if (iter == params.end()) {
+    return default_value;
+  }
+  if (std::holds_alternative<bool>(iter->second)) {
+    return std::get<bool>(iter->second);
+  }
+  throw std::invalid_argument(
+      std::string(context) + "." + key + " must be a boolean.");
+}
+
 }  // namespace forcefield
 }  // namespace beads

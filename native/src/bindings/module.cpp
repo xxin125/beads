@@ -4,6 +4,8 @@
 
 #include <simulation/simulation_run.hpp>
 
+#include <beads/core/types.hpp>
+
 #include <stdexcept>
 
 namespace py = pybind11;
@@ -14,8 +16,11 @@ namespace {
 
 py::dict build_info() {
   py::dict info;
-  info["real_precision"] = "single";
-  info["real_dtype"] = "float32";
+  // Report whatever precision this build was actually compiled with, derived
+  // from real_t itself so it can never drift from types.hpp / BEADS_REAL64.
+  const bool double_precision = sizeof(real_t) == sizeof(double);
+  info["real_precision"] = double_precision ? "double" : "single";
+  info["real_dtype"] = double_precision ? "float64" : "float32";
   info["type_dtype"] = "int32";
   info["index_dtype"] = "uint32";
   info["image_dtype"] = "int32";

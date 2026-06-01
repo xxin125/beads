@@ -29,6 +29,18 @@ From this package directory:
 python -m pip install .
 ```
 
+By default, BEADS builds the native engine in single precision
+(`real_t = float`, NumPy real dtype `float32`). To build the double-precision
+engine instead, pass the CMake option through scikit-build:
+
+```bash
+python -m pip install . --config-settings=cmake.define.BEADS_REAL64=ON
+```
+
+`beads.build_info()` reports the precision and NumPy dtypes compiled into the
+installed native extension. The Python layer uses that information when
+validating arrays and reading/writing BEADS binary outputs.
+
 Check the installed package:
 
 ```bash
@@ -146,6 +158,12 @@ thermostat temperatures are in K, and thermo pressure is reported in bar.
 For example, `epsilon=1.0` is kJ/mol, `sigma=0.34` and pair cutoffs are nm,
 `dt=0.001` is ps, and `temperature=300.0` is K.
 
+Lennard-Jones pair interactions use
+`U = 4 * epsilon * [(sigma/r)^12 - (sigma/r)^6]` by default. Pass
+`shift=True` to `pair_style("lj", cutoff=..., shift=True)` to subtract the
+potential value at the cutoff, making the pair potential zero at `r = cutoff`
+without changing forces.
+
 Harmonic bond `r0` values use length units and harmonic bond `k` values use
 energy/length^2. Harmonic angle `theta0` values are degrees; angle `k` values
 use energy/radian^2. Harmonic dihedral `k` values use energy units.
@@ -157,7 +175,7 @@ requires a `units=` argument and does not perform unit conversion.
 ## Supported Surface
 
 - Units: `reduced` and `nm_kjmol`
-- Pair style: Lennard-Jones through `pair_style("lj", cutoff=...)`
+- Pair style: Lennard-Jones through `pair_style("lj", cutoff=..., shift=...)`
 - Listed forces: harmonic bonds, angles, and dihedrals
 - Dynamics: `Dynamics("none")` for zero-step evaluation and
   `Dynamics("velocity_verlet", dt=...)` for time integration
@@ -168,6 +186,8 @@ requires a `units=` argument and does not perform unit conversion.
   final-state snapshot
 - IO: supported LAMMPS molecular data-file import, BEADS trajectory reading,
   and LAMMPS custom dump export
+- Precision: single precision by default, or double precision with
+  `BEADS_REAL64=ON` at build time
 
 ## Topology And Force-Field Rules
 

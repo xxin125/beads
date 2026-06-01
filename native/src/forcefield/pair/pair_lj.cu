@@ -146,7 +146,7 @@ __global__ void compute_lj_pair_forces_with_observables_kernel(
       fy += pair_fy;
       fz += pair_fz;
       if constexpr (NeedPairPotentialEnergy) {
-        particle_energy += coeff.epsilon4 * (sr12 - sr6);
+        particle_energy += coeff.epsilon4 * (sr12 - sr6) - coeff.shift_energy;
       }
       if constexpr (NeedGlobalScalarVirial) {
         particle_virial += dx * pair_fx + dy * pair_fy + dz * pair_fz;
@@ -185,23 +185,38 @@ __global__ void compute_lj_pair_forces_with_observables_kernel(
 auto LjPairModel::pack_device_coeff(
     real_t epsilon,
     real_t sigma,
-    real_t cutoff) -> DeviceCoeff {
+    real_t cutoff,
+    bool shift) -> DeviceCoeff {
   const real_t sigma2 = sigma * sigma;
   const real_t epsilon4 = real_t{4} * epsilon;
+
+  real_t shift_energy = real_t{0};
+  if (shift) {
+    const real_t sr2 = sigma2 / (cutoff * cutoff);
+    const real_t sr6 = sr2 * sr2 * sr2;
+    const real_t sr12 = sr6 * sr6;
+    shift_energy = epsilon4 * (sr12 - sr6);
+  }
   return DeviceCoeff{
       sigma2,
       epsilon4,
       real_t{6} * epsilon4,
-      cutoff * cutoff};
+      cutoff * cutoff,
+      shift_energy};
 }
 
 LjPairModel::LjPairModel() : PairModel(kStyleName) {}
 
 void LjPairModel::read_settings(const input::PairStyleSpec& pair_style) {
-  require_exact_parameter_keys(pair_style.params, {"cutoff"}, "pair_style");
+  require_allowed_parameter_keys(pair_style.params, {"cutoff", "shift"}, "pair_style");
   cutoff_ = require_positive_real_parameter(
       pair_style.params,
       "cutoff",
+      "pair_style");
+  shift_ = optional_boolean_parameter(
+      pair_style.params,
+      "shift",
+      false,
       "pair_style");
 }
 
@@ -226,7 +241,7 @@ void LjPairModel::read_coeff(const input::PairCoeffSpec& pair_coeff) {
   coeffs_.set_symmetric(
       pair_coeff.type_i,
       pair_coeff.type_j,
-      pack_device_coeff(epsilon, sigma, cutoff_),
+      pack_device_coeff(epsilon, sigma, cutoff_, shift_),
       "Pair(\"lj\") pair_coeff");
 }
 

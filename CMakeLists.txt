@@ -21,6 +21,16 @@ target_include_directories(
     native/src
 )
 
+# Build-time floating-point precision switch. OFF → single (float32, default);
+# ON → double (float64). The definition rides on the INTERFACE config target so
+# every native translation unit AND the pybind bindings compile with the same
+# real_t (no ABI skew). Build double precision with, e.g.:
+#   pip install . --config-settings=cmake.define.BEADS_REAL64=ON
+option(BEADS_REAL64 "Build the double-precision (float64) BEADS engine." OFF)
+if(BEADS_REAL64)
+  target_compile_definitions(beads_native_config INTERFACE BEADS_REAL64)
+endif()
+
 set(
   BEADS_NATIVE_SYSTEM_STATE_SOURCES
   native/src/system/state/device_forces.cu

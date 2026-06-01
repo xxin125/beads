@@ -23,6 +23,7 @@ output::log::LogRunStartSummary make_log_run_start_summary(
   summary.box_lengths = host_state.box().lengths;
   summary.dynamics_style = spec.dynamics.style;
   if (dynamics) {
+    summary.dynamics_dt = dynamics->dt();
     summary.thermostat_style = dynamics->thermostat_style();
   } else if (spec.dynamics.thermostat) {
     summary.thermostat_style = spec.dynamics.thermostat->style;

@@ -14,6 +14,7 @@ class LjPairModel final : public PairModel {
     real_t epsilon4 = real_t{0};
     real_t epsilon24 = real_t{0};
     real_t cutoff_sq = real_t{0};
+    real_t shift_energy = real_t{0};
   };
 
   static constexpr const char* kStyleName = "lj";
@@ -44,13 +45,15 @@ class LjPairModel final : public PairModel {
   static DeviceCoeff pack_device_coeff(
       real_t epsilon,
       real_t sigma,
-      real_t cutoff);
+      real_t cutoff,
+      bool shift);
   void read_settings(const input::PairStyleSpec& pair_style) override;
   void begin_coeffs(type_id_t active_type_count) override;
   void read_coeff(const input::PairCoeffSpec& pair_coeff) override;
   void finish_configuration() override;
 
   real_t cutoff_ = real_t{0};
+  bool shift_ = false;
   DenseTypePairTable<DeviceCoeff> coeffs_;
 };
 

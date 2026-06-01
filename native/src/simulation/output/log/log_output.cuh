@@ -30,6 +30,7 @@ struct LogRunStartSummary {
   std::array<real_t, 3> box_upper = {};
   std::array<real_t, 3> box_lengths = {};
   std::string dynamics_style;
+  std::optional<real_t> dynamics_dt;
   std::string thermostat_style = "none";
   real_t cutoff_buffer = real_t{0};
   std::string neighbor_path;

@@ -70,6 +70,15 @@ class PairModel {
       const input::StyleParamMap& params,
       const char* key,
       std::string_view owner) const;
+  void require_allowed_parameter_keys(
+      const input::StyleParamMap& params,
+      std::initializer_list<const char*> allowed_keys,
+      std::string_view owner) const;
+  bool optional_boolean_parameter(
+      const input::StyleParamMap& params,
+      const char* key,
+      bool default_value,
+      std::string_view owner) const;
 
  private:
   void require_not_configured() const;

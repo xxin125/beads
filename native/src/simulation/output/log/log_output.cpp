@@ -52,6 +52,15 @@ std::string index_or_none(const std::optional<index_t>& value) {
   return text.str();
 }
 
+std::string real_or_none(const std::optional<real_t>& value) {
+  if (!value) {
+    return "none";
+  }
+  std::ostringstream text;
+  text << std::setprecision(9) << *value;
+  return text.str();
+}
+
 std::string format_real3(const std::array<real_t, 3>& value) {
   std::ostringstream text;
   text << '(' << value[0] << ',' << value[1] << ',' << value[2] << ')';
@@ -266,6 +275,9 @@ class LogOutput::Impl {
       std::ostringstream message;
       message << "dynamics summary"
               << '\n' << format_log_label_value("style", summary.dynamics_style)
+              << '\n' << format_log_label_value(
+                  "dt",
+                  real_or_none(summary.dynamics_dt))
               << '\n' << format_log_label_value(
                   "thermostat",
                   summary.thermostat_style);
